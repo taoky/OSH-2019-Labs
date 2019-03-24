@@ -51,7 +51,7 @@
 1. FAT16/32，作为 `boot` 分区的文件系统。上文提到，`bootcode.bin` 和 `start.elf` 等文件都在此分区上。使用 FAT 和 MBR，可能是因为对于固件来说，实现简单。
 2. 加载的操作系统指定根目录的文件系统。对于 Linux 来说，一般是 `ext4`。
 
-## Reference
+## References
 
 1. [Linux startup process](https://en.wikipedia.org/wiki/Linux_startup_process)
 2. [The BIOS/MBR Boot Process](https://neosmart.net/wiki/mbr-boot-process/)
