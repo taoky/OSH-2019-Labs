@@ -140,6 +140,124 @@ ble loop
 mov pc, lr
 ```
 
+## `/dev/sdc1` 中重要的文件
+
+对于实验 1-3，我们最小只需要三个文件： `kernel7.img` 、`bootcode.bin` 和 `start.elf` 。`bootcode.bin` 和 `start.elf` 的作用见实验 1-1 报告。
+
+## `/dev/sdc2` 是否被用到
+
+很明显没有，毕竟我们的汇编也没写读 `ext4` 文件系统的功能呀。
+
+## `as`, `ld`, `objcopy` 的作用
+
+`as` 是 assembler，负责将汇编转换为目标文件，以供下一步链接使用。
+
+`ld` 是 linker，负责将目标文件与库链接，生成可执行文件。
+
+`objcopy` 负责对目标文件进行处理，复制目标文件的一部分内容到另一个文件。
+
+在此实验中，`as` 生成的 `led.o` 如下：
+
+```
+[tao@tao-linux-vmware lab1]$ file led.o
+led.o: ELF 32-bit LSB relocatable, ARM, EABI5 version 1 (SYSV), not stripped
+[tao@tao-linux-vmware lab1]$ arm-linux-gnueabihf-objdump -d led.o
+
+led.o：     文件格式 elf32-littlearm
+
+
+Disassembly of section .init:
+
+00000000 <_start>:
+   0:	e59f003c 	ldr	r0, [pc, #60]	; 44 <loop+0x10>
+   4:	e3a01302 	mov	r1, #134217728	; 0x8000000
+   8:	e5801008 	str	r1, [r0, #8]
+   c:	e59f2034 	ldr	r2, [pc, #52]	; 48 <loop+0x14>
+  10:	e59f3034 	ldr	r3, [pc, #52]	; 4c <loop+0x18>
+  14:	e3a04202 	mov	r4, #536870912	; 0x20000000
+
+00000018 <on>:
+  18:	eb000003 	bl	2c <wait_one_sec>
+  1c:	e580401c 	str	r4, [r0, #28]
+  20:	eb000001 	bl	2c <wait_one_sec>
+
+00000024 <off>:
+  24:	e5804028 	str	r4, [r0, #40]	; 0x28
+  28:	eafffffa 	b	18 <on>
+
+0000002c <wait_one_sec>:
+  2c:	e5921004 	ldr	r1, [r2, #4]
+  30:	e0811003 	add	r1, r1, r3
+
+00000034 <loop>:
+  34:	e5925004 	ldr	r5, [r2, #4]
+  38:	e1550001 	cmp	r5, r1
+  3c:	dafffffc 	ble	34 <loop>
+  40:	e1a0f00e 	mov	pc, lr
+  44:	3f200000 	.word	0x3f200000
+  48:	3f003000 	.word	0x3f003000
+  4c:	000f4240 	.word	0x000f4240
+```
+
+基本是我们汇编的内容。而在链接之后：
+
+```
+[tao@tao-linux-vmware lab1]$ arm-linux-gnueabihf-objdump -d led.elf
+
+led.elf：     文件格式 elf32-littlearm
+
+
+Disassembly of section .init:
+
+00008054 <_start>:
+    8054:	e59f003c 	ldr	r0, [pc, #60]	; 8098 <loop+0x10>
+    8058:	e3a01302 	mov	r1, #134217728	; 0x8000000
+    805c:	e5801008 	str	r1, [r0, #8]
+    8060:	e59f2034 	ldr	r2, [pc, #52]	; 809c <loop+0x14>
+    8064:	e59f3034 	ldr	r3, [pc, #52]	; 80a0 <loop+0x18>
+    8068:	e3a04202 	mov	r4, #536870912	; 0x20000000
+
+0000806c <on>:
+    806c:	eb000003 	bl	8080 <wait_one_sec>
+    8070:	e580401c 	str	r4, [r0, #28]
+    8074:	eb000001 	bl	8080 <wait_one_sec>
+
+00008078 <off>:
+    8078:	e5804028 	str	r4, [r0, #40]	; 0x28
+    807c:	eafffffa 	b	806c <on>
+
+00008080 <wait_one_sec>:
+    8080:	e5921004 	ldr	r1, [r2, #4]
+    8084:	e0811003 	add	r1, r1, r3
+
+00008088 <loop>:
+    8088:	e5925004 	ldr	r5, [r2, #4]
+    808c:	e1550001 	cmp	r5, r1
+    8090:	dafffffc 	ble	8088 <loop>
+    8094:	e1a0f00e 	mov	pc, lr
+    8098:	3f200000 	.word	0x3f200000
+    809c:	3f003000 	.word	0x3f003000
+    80a0:	000f4240 	.word	0x000f4240
+```
+
+可以注意到一些微小的变化，基址从 0 变成了 0x8000。而 `objcopy` 就将生成的 ELF 中的指令复制了出来，以让 `start.elf` 加载。
+
+```
+[tao@tao-linux-vmware lab1]$ file led.img
+led.img: data
+[tao@tao-linux-vmware lab1]$ hexdump led.img
+0000000 003c e59f 1302 e3a0 1008 e580 2034 e59f
+0000010 3034 e59f 4202 e3a0 0003 eb00 401c e580
+0000020 0001 eb00 4028 e580 fffa eaff 1004 e592
+0000030 1003 e081 5004 e592 0001 e155 fffc daff
+0000040 f00e e1a0 0000 3f20 3000 3f00 4240 000f
+0000050
+```
+
+可以看到，`led.img` 中就是纯粹的指令，没有 ELF 文件结构。
+
+日常编译程序需要 `as` 和 `ld`，以生成可以直接执行的文件。`objcopy` 不需要，因为我们写的程序为了让操作系统运行，要按照一定的文件格式（对于 Linux 是 ELF），不需要使用 `objcopy` 再次处理。
+
 ## References
 
 *（除材料中已经给出的外）*
