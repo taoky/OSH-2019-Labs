@@ -1,5 +1,9 @@
 # OSH 实验 2: Shell (README)
 
+**Keyu Tao, PB17111630**
+
+---
+
 ## 简介
 
 `tsh` 实现了一部分简单的 Shell 功能，列表如下：
@@ -15,6 +19,7 @@
   - 支持基于文件描述符的文件重定向。
   - 支持 `<<` 与 `<<<`。
 - 支持基于环境变量的变量代换。
+- 支持部分转义符号特性：`\n`, `\r`, `\t` 和 `\\`。
 - 在程序执行错误时，会显示程序返回值与 0337 相与的返回码（支持内建命令）。
 
 ## 编译
@@ -189,8 +194,79 @@ $ ./a.out < test.cpp > outt 2>&1
 $ cat outt
 Out: #include
 Err: #include
+$ ./a.out >> out 2>> err
+$ ./a.out >> out 2>> err
+naive!
+$ cat out
+Out: #include
+Out: naive!
+$ cat err
+Err: #include
+Err: naive!
 ```
 
+- `<<`, `<<<` 与转义符号。
 
+```
+$ wc << EOF
+this
+is
+a
+very
+very
+long 
+test
+text
+EOF
+ 8  8 35
+$ cat <<< too\ young\ too\ simple,\ sometimes\ naive!\\
+too young too simple, sometimes naive!\$ 
+$ echo are\tyou\nOK
+are	you
+OK
+$ 
+```
 
-## 不支持的特性与未定义行为
+- 变量代换。
+
+```
+$ env | grep PATH
+XDG_SESSION_PATH=/org/freedesktop/DisplayManager/Session0
+XDG_SEAT_PATH=/org/freedesktop/DisplayManager/Seat0
+GLADE_CATALOG_PATH=:
+MOZ_PLUGIN_PATH=/usr/lib/mozilla/plugins
+GLADE_MODULE_PATH=:
+GLADE_PIXMAP_PATH=:
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/tao/OSH-lab/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin
+$ echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/tao/OSH-lab/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin
+```
+
+## 不支持的特性、与其它 Shell 可能不一致的特性与未定义行为
+
+- 当 `cd` 与 `exit` 后有管道或文件重定向时，命令没有效果。
+
+```
+$ pwd
+/home/tao/VMWare/lab2/src
+$ cd | wc
+      0       0       0
+$ pwd
+/home/tao/VMWare/lab2/src
+$ cd > osh
+$ pwd
+/home/tao/VMWare/lab2/src
+$ exit | wc
+      0       0       0
+$ exit > osh
+$
+```
+
+- 若无法向 `/tmp` 写入文件，`<<` 与 `<<<` 会出现错误。
+- 命令中同时包含标准输出文件重定向与管道时行为是未定义的。
+- 命令中前后包含对相同文件描述符的重复重定向时行为是未定义的。
+- 不支持通配符、任务管理。
+- 不支持捕获 `SIGINT` 等信号，如果对某个程序按下 `Control + C`，`tsh` 也会被关闭。
+- 变量代换
+  - 只支持对一个 token 完全匹配情况下的替换。即 `aaa$HOME` 和 `$HOME.3` 都是不受支持的。
+  - 如果出现了未定义的变量，`tsh` 会报错，而非替换为空字符串。
