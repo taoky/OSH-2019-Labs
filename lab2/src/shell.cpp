@@ -300,6 +300,7 @@ void tsh_loop(void)
 
                                 size_t find_pos = 0;
                                 int target_fd = str_to_number(reds.token_strs[i]);
+                                bool is_and = false;
                                 if ((find_pos = reds.token_strs[i].find("<")) != string::npos) {
                                     // handle input
                                     if (find_pos + 3 == reds.token_strs[i].size()) {
@@ -328,6 +329,7 @@ void tsh_loop(void)
                                         if (reds.token_strs[i + 1][0] != '&') {
                                             new_fd = Open(reds.token_strs[i + 1].c_str(), O_RDONLY);
                                         } else {
+                                            is_and = true;
                                             new_fd = str_to_number(reds.token_strs[i + 1].substr(1));
                                             if (new_fd == -1) {
                                                 AND_SYM_ERR();
@@ -335,7 +337,8 @@ void tsh_loop(void)
                                             }
                                         }
                                         Dup2(new_fd, target_fd == -1 ? STDIN_FILENO : target_fd);
-                                        Close(new_fd);
+                                        if (!is_and)
+                                            Close(new_fd);
                                     }
                                 } else if ((find_pos = reds.token_strs[i].find(">")) != string::npos) {
                                     if (reds.token_strs[i + 1][0] != '&') {
@@ -345,6 +348,7 @@ void tsh_loop(void)
                                                         reds.token_strs[i][find_pos + 1] == '>' ? O_APPEND : O_TRUNC),
                                                     0644);
                                     } else {
+                                        is_and = true;
                                         new_fd = str_to_number(reds.token_strs[i + 1].substr(1));
                                         if (new_fd == -1) {
                                             AND_SYM_ERR();
@@ -352,7 +356,8 @@ void tsh_loop(void)
                                         }
                                     }
                                     Dup2(new_fd, target_fd == -1 ? STDOUT_FILENO : target_fd);
-                                    Close(new_fd);
+                                    if (!is_and)
+                                        Close(new_fd);
                                 }
                             }
 
