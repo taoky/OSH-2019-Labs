@@ -70,7 +70,7 @@ void handle_clnt(int clnt_sock)
 
     size_t sfs = 0;
     while (sfs < MAX_RECV_LEN) {
-        int ret = read(clnt_sock, req_buf, MAX_RECV_LEN - sfs);
+        int ret = read(clnt_sock, req_buf + sfs, MAX_RECV_LEN - sfs);
         if (ret == -1) {
             if (errno != EAGAIN) {
                 perror("read()");
