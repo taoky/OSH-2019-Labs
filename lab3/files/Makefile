@@ -1,10 +1,11 @@
 objects = server.o fatal_posix.o
 
-CC = arm-linux-gnueabihf-gcc
-CFLAGS = -Wall -Wextra -O2 -std=c99
+CXX = arm-linux-gnueabihf-g++
+# CXX = g++
+CXXFLAGS = -Wall -Wextra -O2 -std=gnu++11
 
 sh : $(objects)
-	$(CC) $(CFLAGS) -o server $(objects)
+	$(CXX) $(CXXFLAGS) -o server $(objects)
 
 .PHONY : clean
 clean :

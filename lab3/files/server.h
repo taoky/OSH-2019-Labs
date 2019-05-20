@@ -23,7 +23,7 @@
 #include <linux/limits.h>
 #include <errno.h>
 
-// #include <asm-generic/socket.h>
+#include <unordered_map>
 
 #define SO_REUSEPORT 15  // shut up the complaining arm-linux-gnueabihf-gcc
 
@@ -34,7 +34,7 @@
 #define BIND_IP_ADDR "0.0.0.0"
 #define BIND_PORT 8000
 #define MAX_RECV_LEN 8192
-#define MAX_SEND_LEN 1048576
+#define MAX_SEND_LEN 8192
 #define MAX_PATH_LEN 1024
 #define MAX_HOST_LEN 1024
 #define MAX_CONN 20

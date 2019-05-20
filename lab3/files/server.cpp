@@ -7,6 +7,8 @@ char cwd[PATH_MAX];
 int serv_sock;
 int epoll_fd = 0;
 
+std::unordered_map <int, int> socket_to_fd_map;
+
 bool check_path_security(char *path) {
     if (!path) {
         return false;
@@ -43,25 +45,30 @@ int parse_request(char* request, ssize_t req_len, char** path)
     return 0;
 }
 
-void file_serve(int sock, int file_fd, size_t filesize) {
-    off_t ofs = 0;
-
-    while (ofs < filesize) {
-        if (sendfile(sock, file_fd, &ofs, filesize - ofs) == -1) {
+int file_serve(int sock, int file_fd) {
+    int ret = 0;
+    while (1) {
+        if ((ret = sendfile(sock, file_fd, NULL, MAX_SEND_LEN)) == -1) {
             if (errno != EAGAIN) {
                 perror("sendfile()");
                 break;
             }
-            continue;
+        } else if (ret == 0) {
+            return ret;
+        } else {
+            break;
         }
     }
-    close(file_fd);
+    return ret;
 }
 
-void handle_clnt(int clnt_sock)
+/* returns 0: done
+   returns fd: still needs sendfile()
+*/
+int handle_clnt(int clnt_sock)
 {
     struct stat statbuf;
-    char* response_status = HTTP_STATUS_200;
+    char const* response_status = HTTP_STATUS_200;
     size_t content_length = 0;
     bool is_success = false;
     int file_fd;
@@ -115,7 +122,7 @@ void handle_clnt(int clnt_sock)
     // write(clnt_sock, response, response_len);
     sfs = 0;
     while (sfs < response_len) {
-        int ret = write(clnt_sock, response, response_len - sfs);
+        int ret = write(clnt_sock, response + sfs, response_len - sfs);
         if (ret == -1) {
             if (errno != EAGAIN) {
                 perror("write()");
@@ -129,10 +136,12 @@ void handle_clnt(int clnt_sock)
     }
 
     if (is_success) {
-        file_serve(clnt_sock, file_fd, content_length);
+        // file_serve(clnt_sock, file_fd, 0);
+        return file_fd;
+    } else {
+        close(clnt_sock);
+        return 0;
     }
-
-    close(clnt_sock);
 
 }
 
@@ -183,7 +192,35 @@ void handle(int serv_sock) {
                     }
                 }
             } else if (events_list[i].events & EPOLLIN) {
-                handle_clnt(events_list[i].data.fd);
+                int clnt_sock = events_list[i].data.fd;
+                int ret = handle_clnt(clnt_sock);
+                if (ret != 0) {
+                    socket_to_fd_map[clnt_sock] = ret;
+                    event.events = EPOLLOUT | EPOLLET;
+                    event.data.fd = clnt_sock;
+                    int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, clnt_sock, &event);
+                    if (ret == -1) {
+                        perror("epoll_ctl");
+                    }
+                }
+            } else if (events_list[i].events & EPOLLOUT) {
+                // DEBUG("test\n");
+                int clnt_sock = events_list[i].data.fd;
+                int fd = socket_to_fd_map[clnt_sock];
+                int ret = file_serve(clnt_sock, fd);
+                // DEBUG("test2\n");
+                if (ret == 0 || ret == -1) {
+                    close(fd);
+                    close(clnt_sock);
+                    socket_to_fd_map.erase(clnt_sock);
+                } else if (ret != -1) {
+                    event.events = EPOLLOUT | EPOLLET;
+                    event.data.fd = clnt_sock;
+                    int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, clnt_sock, &event);
+                    if (ret == -1) {
+                        perror("epoll_ctl");
+                    }
+                }
             } else {
                 perror("epoll event");
                 close(events_list[i].data.fd);
@@ -254,13 +291,13 @@ int main() {
 
     Listen(serv_sock, SOMAXCONN);
 
-    Signal(SIGCHLD, child_handler);
+    Signal(SIGCHLD, (sighandler_t) child_handler);
     Signal(SIGPIPE, SIG_IGN);  // process won't stop when broswer/wget cancels large file downloads
     // Signal(SIGINT, suicide);
 
     getcwd(cwd, PATH_MAX);
 
-    for (int i = 0; i < cpu_core_cnt * 2; i++) {
+    for (int i = 0; i < cpu_core_cnt; i++) {
         if (fork() == 0) {
             handle(serv_sock);
             return 0;
