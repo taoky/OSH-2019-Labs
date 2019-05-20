@@ -34,6 +34,29 @@
 - 忽略了 `SIGPIPE` 信号，在下载大文件时断开连接不会导致程序结束。
 - 对服务器 socket 设置了 `SO_REUSEPORT` 和 `SO_REUSEADDR`。
 
+## `siege` 结果
+
+```
+siege -c 100 -r 100 http://172.20.10.11:8000/index.html
+```
+
+`index.html` 为 125 bytes，计算机与树莓派连接在同一手机热点中。在树莓派上测试，返回如下：
+
+```
+Transactions:		       10000 hits
+Availability:		      100.00 %
+Elapsed time:		        8.76 secs
+Data transferred:	        1.19 MB
+Response time:		        0.09 secs
+Transaction rate:	     1141.55 trans/sec
+Throughput:		        0.14 MB/sec
+Concurrency:		       97.26
+Successful transactions:       10000
+Failed transactions:	           0
+Longest transaction:	        0.19
+Shortest transaction:	        0.01
+```
+
 ## 关于畸形请求
 
 事实上，只要 HTTP 请求的第一行是这样的格式：
