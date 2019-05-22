@@ -57,6 +57,25 @@ Longest transaction:	        0.19
 Shortest transaction:	        0.01
 ```
 
+增大 `-c` 与 `-r` 的值：
+
+```
+$ siege -c 200 -r 300 http://172.20.10.11:8000/index.html
+... （省略）
+Transactions:		       60000 hits
+Availability:		      100.00 %
+Elapsed time:		       50.24 secs
+Data transferred:	        7.15 MB
+Response time:		        0.16 secs
+Transaction rate:	     1194.27 trans/sec
+Throughput:		        0.14 MB/sec
+Concurrency:		      193.39
+Successful transactions:       60000
+Failed transactions:	           0
+Longest transaction:	        1.29
+Shortest transaction:	        0.02
+```
+
 ## 关于畸形请求
 
 事实上，只要 HTTP 请求的第一行是这样的格式：
